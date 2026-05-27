@@ -36,7 +36,7 @@ jobs:
     # hard-pinning an `Xcode_XX.app` path — those paths change per runner
     # image (e.g. `Xcode_26.app` does not exist on macos-26) and break
     # silently when the image is updated.
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       DOCC_TARGET: SwiftGDAL
       HOSTING_BASE_PATH: SwiftGDAL
