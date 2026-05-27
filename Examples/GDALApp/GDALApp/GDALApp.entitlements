@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App Sandbox is enabled at the project level; declare it here too. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+
+    <!-- Required so .fileImporter can read user-picked raster/vector files. -->
+    <key>com.apple.security.files.user-selected.read-only</key>
+    <true/>
+
+    <!--
+        gdal.framework bundles dependent dylibs (libodbcinst, libsqlite,
+        libtiff, libproj, etc.) under Versions/A/Libraries/, each adhoc-
+        signed by gdal-xcframework-builder. When Xcode re-signs the
+        embedded framework with the developer's identity, the inner dylibs
+        keep their original adhoc signature. With hardened runtime +
+        library validation, dyld rejects the Team ID mismatch.
+
+        Disabling library validation is Apple's documented workaround for
+        apps that bundle third-party frameworks. See:
+        https://developer.apple.com/documentation/bundleresources/entitlements/com_apple_security_cs_disable-library-validation
+    -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

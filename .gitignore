@@ -1,0 +1,19 @@
+## Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+## Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+## DocC build output
+/docs/
+
+## macOS
+.DS_Store
+
+## Local artifacts
+/Frameworks/
+*.profraw
