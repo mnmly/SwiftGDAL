@@ -24,9 +24,15 @@ public enum GDALOps {
 
     /// Converts/clips/resamples a raster dataset. See `gdal_translate`.
     ///
-    /// - Parameter onProgress: Optional callback invoked from GDAL's working
-    ///   thread with completion ratios in `0...1`. Keep it cheap and
-    ///   thread-safe — don't touch UI directly; hop to `@MainActor` if needed.
+    /// - Parameters:
+    ///   - source: Open ``Dataset`` to read from.
+    ///   - destination: Output path (real filesystem or `/vsimem/…`).
+    ///   - options: CLI-style flags passed verbatim to `gdal_translate`,
+    ///     e.g. `["-of", "PNG", "-outsize", "256", "256"]`.
+    ///   - onProgress: Optional callback invoked from GDAL's working thread
+    ///     with completion ratios in `0...1`. Keep it cheap and thread-safe —
+    ///     don't touch UI directly; hop to `@MainActor` if needed.
+    /// - Returns: The newly-created ``Dataset`` (owned; closes on deinit).
     public static func translate(
         source: Dataset,
         destination: String,
@@ -54,6 +60,14 @@ public enum GDALOps {
     // MARK: - Warp (raster)
 
     /// Reprojects/resamples one or more raster datasets. See `gdalwarp`.
+    ///
+    /// - Parameters:
+    ///   - sources: One or more open input rasters. Must be non-empty.
+    ///   - destination: Output path (real filesystem or `/vsimem/…`).
+    ///   - options: CLI-style flags passed verbatim to `gdalwarp`,
+    ///     e.g. `["-t_srs", "EPSG:3857", "-r", "bilinear"]`.
+    ///   - onProgress: Optional progress callback. See ``translate(source:destination:options:onProgress:)`` for thread-safety notes.
+    /// - Returns: The newly-created warped ``Dataset``.
     public static func warp(
         sources: [Dataset],
         destination: String,
@@ -86,6 +100,13 @@ public enum GDALOps {
     // MARK: - Rasterize (vector → raster)
 
     /// Rasterizes vector layers into a raster. See `gdal_rasterize`.
+    ///
+    /// - Parameters:
+    ///   - source: Open vector dataset whose features get burned into raster cells.
+    ///   - destination: Output raster path. May be an existing raster (to burn
+    ///     into) or a new path (combined with `-ts`/`-te`/`-burn` options).
+    ///   - options: CLI-style flags passed verbatim to `gdal_rasterize`.
+    ///   - onProgress: Optional progress callback. See ``translate(source:destination:options:onProgress:)`` for thread-safety notes.
     public static func rasterize(
         source: VectorDataset,
         destination: String,
@@ -113,6 +134,13 @@ public enum GDALOps {
     // MARK: - VectorTranslate (ogr2ogr)
 
     /// Converts / reprojects / filters one or more vector datasets. See `ogr2ogr`.
+    ///
+    /// - Parameters:
+    ///   - sources: One or more open input vector datasets. Must be non-empty.
+    ///   - destination: Output path for the new vector dataset.
+    ///   - options: CLI-style flags passed verbatim to `ogr2ogr`,
+    ///     e.g. `["-f", "GeoJSON", "-t_srs", "EPSG:3857"]`.
+    ///   - onProgress: Optional progress callback. See ``translate(source:destination:options:onProgress:)`` for thread-safety notes.
     public static func vectorTranslate(
         sources: [VectorDataset],
         destination: String,
@@ -148,6 +176,14 @@ public enum GDALOps {
     ///
     /// Either pass open `sources` (their handles are used directly) **or**
     /// `sourcePaths` (GDAL opens them itself). Don't pass both.
+    ///
+    /// - Parameters:
+    ///   - sources: Open input rasters (mutually exclusive with `sourcePaths`).
+    ///   - sourcePaths: Input file paths for GDAL to open (mutually exclusive
+    ///     with `sources`).
+    ///   - destination: Output `.vrt` path.
+    ///   - options: CLI-style flags passed verbatim to `gdalbuildvrt`.
+    ///   - onProgress: Optional progress callback. See ``translate(source:destination:options:onProgress:)`` for thread-safety notes.
     public static func buildVRT(
         sources: [Dataset] = [],
         sourcePaths: [String] = [],
@@ -190,7 +226,13 @@ public enum GDALOps {
 // MARK: - Ergonomic methods
 
 extension Dataset {
-    /// Convenience: `GDALOps.translate(source: self, ...)`.
+    /// Convenience that forwards to ``GDALOps/translate(source:destination:options:onProgress:)``
+    /// with `self` as the source.
+    ///
+    /// - Parameters:
+    ///   - destination: Output path.
+    ///   - options: CLI-style flags for `gdal_translate`.
+    ///   - onProgress: Optional progress callback.
     public func translate(
         to destination: String,
         options: [String] = [],
@@ -199,7 +241,13 @@ extension Dataset {
         try GDALOps.translate(source: self, destination: destination, options: options, onProgress: onProgress)
     }
 
-    /// Convenience: `GDALOps.warp(sources: [self], ...)`.
+    /// Convenience that forwards to ``GDALOps/warp(sources:destination:options:onProgress:)``
+    /// with `[self]` as the source list.
+    ///
+    /// - Parameters:
+    ///   - destination: Output path.
+    ///   - options: CLI-style flags for `gdalwarp`.
+    ///   - onProgress: Optional progress callback.
     public func warp(
         to destination: String,
         options: [String] = [],
@@ -210,7 +258,13 @@ extension Dataset {
 }
 
 extension VectorDataset {
-    /// Convenience: `GDALOps.vectorTranslate(sources: [self], ...)`.
+    /// Convenience that forwards to ``GDALOps/vectorTranslate(sources:destination:options:onProgress:)``
+    /// with `[self]` as the source list.
+    ///
+    /// - Parameters:
+    ///   - destination: Output path.
+    ///   - options: CLI-style flags for `ogr2ogr`.
+    ///   - onProgress: Optional progress callback.
     public func translate(
         to destination: String,
         options: [String] = [],

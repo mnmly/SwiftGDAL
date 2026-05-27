@@ -1,11 +1,12 @@
 # ``SwiftGDAL``
 
-Swift bindings for [GDAL](https://gdal.org/) — raster + vector geospatial
-I/O for macOS and iOS, backed by an xcframework that bundles GDAL and PROJ.
+Swift bindings for GDAL — raster + vector geospatial I/O for macOS and iOS,
+backed by an xcframework that bundles GDAL and PROJ.
 
 ## Overview
 
-SwiftGDAL wraps GDAL's stable C API in idiomatic Swift: handles become
+SwiftGDAL is an idiomatic Swift wrapper over [GDAL's](https://gdal.org/) C API.
+Handles become
 `final class` types with `deinit`-managed lifetimes, errors raise as
 ``GDALError``, and blocking I/O has async overloads that hop off the
 caller's executor via `Task.detached`.
@@ -43,8 +44,7 @@ for feature in layer.features() {
 ``Dataset``, ``RasterBand``, ``VectorDataset``, ``Layer``, ``Feature``,
 and ``Geometry`` are deliberately **not `Sendable`**. GDAL handles are
 not safe to share across threads; keep one per task. The async overloads
-(``RasterBand/read(rect:as:)-async``, ``Layer/featuresAsync()``,
-``Dataset/warp(to:options:onProgress:)``) hop blocking I/O off the
+on ``RasterBand`` and ``Layer/featuresAsync()`` hop blocking I/O off the
 caller via `Task.detached` so `@MainActor` callers stay responsive — but
 the handle itself stays pinned to one task at a time.
 
