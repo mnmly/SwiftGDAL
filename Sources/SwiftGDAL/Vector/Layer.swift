@@ -51,8 +51,10 @@ public final class Layer {
 
     // MARK: - Filters
 
-    /// Restricts subsequent reads to features intersecting the bbox.
-    /// Pass `nil` to clear.
+    /// Restricts subsequent feature iteration to those intersecting `envelope`.
+    ///
+    /// - Parameter envelope: Bounding box `(minX, minY, maxX, maxY)`, or
+    ///   `nil` to clear the filter.
     public func setSpatialFilter(envelope: (minX: Double, minY: Double, maxX: Double, maxY: Double)?) {
         if let e = envelope {
             let ring = Geometry.polygon(outer: [
@@ -66,8 +68,11 @@ public final class Layer {
         }
     }
 
-    /// Restricts reads to features matching an SQL-like WHERE clause.
-    /// Pass `nil` to clear.
+    /// Restricts feature iteration to those matching an SQL-like WHERE clause.
+    ///
+    /// - Parameter where_: WHERE expression (e.g. `"score > 0.5"`), or `nil`
+    ///   to clear the filter.
+    /// - Throws: ``GDALError`` if the expression is malformed.
     public func setAttributeFilter(_ where_: String?) throws {
         CPLErrorReset()
         let err = OGR_L_SetAttributeFilter(handle, where_)
@@ -110,6 +115,13 @@ public final class Layer {
     // MARK: - Writes
 
     /// Adds a new field definition to the layer's schema.
+    ///
+    /// Must be called before any features have been written if the driver
+    /// requires schema freezes (e.g. Shapefile). On open schemas (GeoJSON,
+    /// SQLite/GPKG) this can be called at any time.
+    ///
+    /// - Parameter def: Field name, type, and optional width/precision.
+    /// - Throws: ``GDALError`` on driver failure (e.g. duplicate name).
     public func createField(_ def: FieldDefn) throws {
         CPLErrorReset()
         let h = OGR_Fld_Create(def.name, def.type.raw).unsafelyUnwrapped
@@ -122,7 +134,14 @@ public final class Layer {
         }
     }
 
-    /// Inserts a feature. Updates the feature's FID on success.
+    /// Inserts a feature into the layer.
+    ///
+    /// Updates `feature.fid` to the driver-assigned FID on success. Wrap
+    /// large bulk inserts in ``VectorDataset/transaction(force:_:)`` for
+    /// drivers that support transactions.
+    ///
+    /// - Parameter feature: New feature to insert. Must match the layer's schema.
+    /// - Throws: ``GDALError`` on driver failure.
     public func create(_ feature: Feature) throws {
         CPLErrorReset()
         let err = OGR_L_CreateFeature(handle, feature.handle)
@@ -131,7 +150,14 @@ public final class Layer {
         }
     }
 
-    /// Updates an existing feature in place (matches by FID).
+    /// Updates an existing feature in place (matched by `feature.fid`).
+    ///
+    /// > Important: Don't call this while iterating ``features()`` /
+    /// > ``featuresAsync()`` on the same layer — collect FIDs first, then
+    /// > mutate after iteration ends.
+    ///
+    /// - Parameter feature: Modified feature with a valid FID.
+    /// - Throws: ``GDALError`` on driver failure.
     public func update(_ feature: Feature) throws {
         CPLErrorReset()
         let err = OGR_L_SetFeature(handle, feature.handle)
@@ -140,6 +166,11 @@ public final class Layer {
         }
     }
 
+    /// Deletes a feature by FID.
+    ///
+    /// - Parameter fid: Feature ID to delete.
+    /// - Throws: ``GDALError`` if no matching feature exists or the driver
+    ///   doesn't support deletion.
     public func delete(fid: Int64) throws {
         CPLErrorReset()
         let err = OGR_L_DeleteFeature(handle, fid)

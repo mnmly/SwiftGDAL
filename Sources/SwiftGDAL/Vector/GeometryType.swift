@@ -45,6 +45,10 @@ public enum GeometryType: Sendable, Equatable {
     }
 }
 
+/// OGR field data type, mirroring `OGRFieldType`.
+///
+/// Used by ``FieldDefn`` to describe a layer schema column. See
+/// ``FieldValue`` for the runtime variant.
 public enum FieldType: Sendable, Equatable {
     case integer
     case integer64
@@ -95,12 +99,24 @@ public enum FieldType: Sendable, Equatable {
     }
 }
 
+/// Schema definition for a single column on a ``Layer``.
 public struct FieldDefn: Sendable, Equatable {
+    /// Column name.
     public let name: String
+    /// Data type.
     public let type: FieldType
+    /// Maximum width (string length, integer digits). `0` for no constraint.
     public var width: Int = 0
+    /// Decimal precision for real types. `0` for no constraint.
     public var precision: Int = 0
 
+    /// Builds a field definition.
+    ///
+    /// - Parameters:
+    ///   - name: Column name.
+    ///   - type: Data type.
+    ///   - width: Max width / digits. Default `0` (driver default).
+    ///   - precision: Decimal precision for real types. Default `0`.
     public init(name: String, type: FieldType, width: Int = 0, precision: Int = 0) {
         self.name = name
         self.type = type
@@ -109,7 +125,10 @@ public struct FieldDefn: Sendable, Equatable {
     }
 }
 
-/// Sum type for OGR field values, used by `Feature` subscripts.
+/// Runtime sum type for OGR field values.
+///
+/// Returned by ``Feature/subscript(field:)-(Int)`` and
+/// ``Feature/subscript(field:)-(String)``; also accepted by their setters.
 public enum FieldValue: Sendable, Equatable {
     case null
     case integer(Int32)

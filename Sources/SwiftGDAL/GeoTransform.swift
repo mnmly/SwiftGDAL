@@ -12,6 +12,16 @@ public struct GeoTransform: Sendable, Equatable {
     public var colRotation: Double
     public var pixelHeight: Double
 
+    /// Builds a geo-transform from its six affine coefficients.
+    ///
+    /// - Parameters:
+    ///   - originX: Top-left X (projected units).
+    ///   - pixelWidth: X-resolution per pixel column.
+    ///   - rowRotation: Off-diagonal X term; `0` for axis-aligned rasters.
+    ///   - originY: Top-left Y (projected units).
+    ///   - colRotation: Off-diagonal Y term; `0` for axis-aligned rasters.
+    ///   - pixelHeight: Y-resolution per row. Typically **negative** (Y axis
+    ///     decreases as rows increase) for top-down rasters.
     public init(
         originX: Double,
         pixelWidth: Double,
@@ -44,7 +54,12 @@ public struct GeoTransform: Sendable, Equatable {
         [originX, pixelWidth, rowRotation, originY, colRotation, pixelHeight]
     }
 
-    /// Project (column, row) → (x, y).
+    /// Projects pixel coordinates to projected (x, y).
+    ///
+    /// - Parameters:
+    ///   - col: Pixel column (0-based, fractional).
+    ///   - row: Pixel row (0-based, fractional).
+    /// - Returns: Coordinate in the dataset's CRS units.
     public func apply(col: Double, row: Double) -> (x: Double, y: Double) {
         (
             originX + col * pixelWidth  + row * rowRotation,

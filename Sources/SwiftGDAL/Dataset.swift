@@ -22,7 +22,15 @@ public final class Dataset {
         self.path = path
     }
 
-    /// Opens an existing dataset.
+    /// Opens an existing raster dataset at `path`.
+    ///
+    /// `path` may be any URL GDAL understands — a local file, `/vsicurl/…`,
+    /// `/vsis3/…`, `/vsimem/…`, etc.
+    ///
+    /// - Parameters:
+    ///   - path: GDAL-understood path or URL.
+    ///   - access: ``AccessMode/readOnly`` (default) or ``AccessMode/update``.
+    /// - Throws: ``GDALError`` if the file can't be opened or recognized.
     public init(opening path: String, access: AccessMode = .readOnly) throws {
         GDAL.registerAll()
         CPLErrorReset()
@@ -33,7 +41,19 @@ public final class Dataset {
         self.path = path
     }
 
-    /// Creates a new dataset using the named driver (e.g. "GTiff", "MEM", "PNG").
+    /// Creates a new raster dataset using the named driver.
+    ///
+    /// - Parameters:
+    ///   - path: Output path. May be `/vsimem/…` for in-memory output.
+    ///   - driver: GDAL driver short name, e.g. `"GTiff"`, `"PNG"`, `"MEM"`.
+    ///     See ``GDAL/driverNames()`` for what's compiled in.
+    ///   - width: Raster width in pixels.
+    ///   - height: Raster height in pixels.
+    ///   - bands: Number of bands.
+    ///   - dataType: Pixel sample type for all bands.
+    ///   - options: Driver-specific creation options as `KEY=VALUE` pairs,
+    ///     e.g. `["COMPRESS": "LZW", "TILED": "YES"]` for GTiff.
+    /// - Throws: ``GDALError`` if the driver is unknown or creation fails.
     public init(
         creating path: String,
         driver: String,
@@ -109,7 +129,10 @@ public final class Dataset {
         }
     }
 
-    /// Returns band at 1-based index (GDAL convention).
+    /// Returns the band at the given 1-based index (GDAL convention).
+    ///
+    /// - Parameter index: 1-based band index in `1...rasterCount`.
+    /// - Returns: A ``RasterBand`` whose lifetime is tied to this dataset.
     public func band(_ index: Int) -> RasterBand {
         precondition(index >= 1 && index <= rasterCount, "band index out of range")
         let bandH = GDALGetRasterBand(handle, Int32(index)).unsafelyUnwrapped
@@ -121,7 +144,12 @@ public final class Dataset {
         GDALFlushCache(handle)
     }
 
-    /// Dataset-level metadata for the given domain (nil → default domain).
+    /// Dataset-level metadata as a `KEY=VALUE` dictionary.
+    ///
+    /// - Parameter domain: GDAL metadata domain. Pass `nil` for the default
+    ///   domain; common alternatives are `"IMAGE_STRUCTURE"`, `"GEOLOCATION"`,
+    ///   driver-specific names like `"TIFF"`, etc.
+    /// - Returns: Empty dictionary if the domain has no entries.
     public func metadata(domain: String? = nil) -> [String: String] {
         let raw = GDALGetMetadata(handle, domain)
         return StringList.dictionary(from: raw)

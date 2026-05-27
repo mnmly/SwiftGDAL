@@ -27,6 +27,11 @@ public final class Geometry {
 
     // MARK: - Constructors
 
+    /// Parses a geometry from a WKT string.
+    ///
+    /// - Parameter wkt: Well-Known Text, e.g. `"POINT (1 2)"`,
+    ///   `"POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))"`.
+    /// - Throws: ``GDALError`` if `wkt` is invalid.
     public convenience init(wkt: String) throws {
         GDAL.registerAll()
         CPLErrorReset()
@@ -44,6 +49,10 @@ public final class Geometry {
         self.init(owned: owned)
     }
 
+    /// Parses a geometry from a WKB byte buffer.
+    ///
+    /// - Parameter wkb: Well-Known Binary bytes.
+    /// - Throws: ``GDALError`` if `wkb` is invalid.
     public convenience init(wkb: Data) throws {
         GDAL.registerAll()
         CPLErrorReset()
@@ -58,13 +67,23 @@ public final class Geometry {
         self.init(owned: owned)
     }
 
-    /// Convenience constructor for a 2D point.
+    /// Builds a 2D point.
+    ///
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
     public static func point(x: Double, y: Double) -> Geometry {
         let h = OGR_G_CreateGeometry(wkbPoint).unsafelyUnwrapped
         OGR_G_SetPoint_2D(h, 0, x, y)
         return Geometry(owned: h)
     }
 
+    /// Builds a 3D (X, Y, Z) point.
+    ///
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
+    ///   - z: Z (elevation).
     public static func point(x: Double, y: Double, z: Double) -> Geometry {
         let h = OGR_G_CreateGeometry(wkbPoint25D).unsafelyUnwrapped
         OGR_G_SetPoint(h, 0, x, y, z)

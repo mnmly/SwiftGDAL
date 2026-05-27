@@ -1,7 +1,13 @@
 import Foundation
 import gdal
 
+/// Error thrown by SwiftGDAL operations.
+///
+/// Captures whatever GDAL/CPL recorded in its thread-local error state at
+/// the failure site — ``class`` mirrors `CPLErr`, ``code`` is the numeric
+/// error number, and ``message`` is GDAL's human-readable text.
 public struct GDALError: Error, CustomStringConvertible, Sendable {
+    /// Severity / category mirroring GDAL's `CPLErr` values.
     public enum Class: Sendable {
         case none, debug, warning, failure, fatal, appDefined, objectNull, httpResponse, aws, user
 
@@ -17,8 +23,11 @@ public struct GDALError: Error, CustomStringConvertible, Sendable {
         }
     }
 
+    /// Severity / category of the error.
     public let `class`: Class
+    /// Numeric error code as reported by `CPLGetLastErrorNo`.
     public let code: Int32
+    /// Human-readable message from GDAL.
     public let message: String
 
     public var description: String {

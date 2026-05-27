@@ -11,8 +11,13 @@ public final class Feature {
         self.handle = handle
     }
 
-    /// Creates a new feature matching a layer's schema. Use this when
-    /// appending features to a layer via `Layer.create(_:)`.
+    /// Creates a new feature matching a layer's schema.
+    ///
+    /// Use this when appending features via ``Layer/create(_:)``. The new
+    /// feature's geometry is `nil` and all fields are unset until you
+    /// populate them.
+    ///
+    /// - Parameter layer: Target layer whose schema the feature should match.
     public convenience init(forLayer layer: Layer) {
         let defn = OGR_L_GetLayerDefn(layer.handle).unsafelyUnwrapped
         self.init(owned: OGR_F_Create(defn).unsafelyUnwrapped)
@@ -44,31 +49,44 @@ public final class Feature {
 
     // MARK: - Fields by index
 
+    /// Name of the field at `index`.
+    ///
+    /// - Parameter index: 0-based field index in `0..<fieldCount`.
     public func fieldName(at index: Int) -> String {
         let defn = OGR_F_GetFieldDefnRef(handle, Int32(index)).unsafelyUnwrapped
         return String(cString: OGR_Fld_GetNameRef(defn))
     }
 
+    /// Field type at `index`.
+    /// - Parameter index: 0-based field index in `0..<fieldCount`.
     public func fieldType(at index: Int) -> FieldType {
         let defn = OGR_F_GetFieldDefnRef(handle, Int32(index)).unsafelyUnwrapped
         return FieldType(OGR_Fld_GetType(defn))
     }
 
+    /// Look up a field's index by name.
+    /// - Parameter name: Column name (case-sensitive).
+    /// - Returns: 0-based index, or `nil` if the column doesn't exist.
     public func fieldIndex(named name: String) -> Int? {
         let i = OGR_F_GetFieldIndex(handle, name)
         return i >= 0 ? Int(i) : nil
     }
 
+    /// Whether the field at `index` has a non-null value.
+    /// - Parameter index: 0-based field index.
     public func isSet(at index: Int) -> Bool {
         OGR_F_IsFieldSet(handle, Int32(index)) != 0
             && OGR_F_IsFieldNull(handle, Int32(index)) == 0
     }
 
+    /// Reads/writes a field by 0-based index.
     public subscript(field index: Int) -> FieldValue {
         get { readField(at: index) }
         set { writeField(at: index, newValue) }
     }
 
+    /// Reads/writes a field by name. Getter returns ``FieldValue/null`` if
+    /// the named column doesn't exist; setter silently does nothing.
     public subscript(field name: String) -> FieldValue {
         get { fieldIndex(named: name).map(readField) ?? .null }
         set {

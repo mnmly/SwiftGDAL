@@ -50,7 +50,13 @@ public final class RasterBand {
         return has != 0 ? v : nil
     }
 
-    /// Statistics. Pass `approximate: true` for fast subsample-based stats.
+    /// Min/max/mean/stdDev of the band's pixel values.
+    ///
+    /// - Parameters:
+    ///   - approximate: Compute against a subsample for speed instead of the
+    ///     whole band.
+    ///   - forceCompute: Recompute even if cached stats are available.
+    /// - Throws: ``GDALError`` if GDAL can't compute stats (e.g. band is empty).
     public func statistics(
         approximate: Bool = false,
         forceCompute: Bool = false
@@ -71,9 +77,17 @@ public final class RasterBand {
 
     // MARK: - Synchronous IO
 
-    /// Reads an arbitrary rectangle into a typed Swift array.
+    /// Reads an arbitrary rectangle of pixels into a typed Swift array.
     ///
-    /// `T` must match the band's data type (no implicit conversion).
+    /// `T` must match the band's runtime ``dataType`` — there is no implicit
+    /// conversion. Pixels are returned in row-major order.
+    ///
+    /// - Parameters:
+    ///   - rect: Sub-rectangle in pixel coordinates as `(x, y, width, height)`.
+    ///     Defaults to the entire band when `nil`.
+    ///   - as: Element type for the returned array. Conforms to ``GDALPixel``.
+    /// - Returns: `rect.width * rect.height` samples in row-major order.
+    /// - Throws: ``GDALError`` if the read fails.
     public func read<T: GDALPixel>(
         rect: (x: Int, y: Int, width: Int, height: Int)? = nil,
         as: T.Type = T.self
@@ -102,7 +116,14 @@ public final class RasterBand {
         return buffer
     }
 
-    /// Writes a typed Swift array into an arbitrary rectangle.
+    /// Writes a typed Swift array into an arbitrary rectangle of the band.
+    ///
+    /// - Parameters:
+    ///   - buffer: Pixels in row-major order. Must have exactly
+    ///     `rect.width * rect.height` elements.
+    ///   - rect: Destination rectangle in pixel coordinates.
+    /// - Throws: ``GDALError`` if the band can't be written (e.g. read-only
+    ///   dataset, type mismatch).
     public func write<T: GDALPixel>(
         _ buffer: [T],
         rect: (x: Int, y: Int, width: Int, height: Int)
@@ -133,7 +154,13 @@ public final class RasterBand {
     // GDAL IO is blocking; hop off the caller's executor via Task.detached
     // so the caller's actor (e.g. @MainActor) stays responsive.
 
-    /// Async read. Yields back to the caller while GDAL does blocking IO.
+    /// Async variant that hops the blocking GDAL call off the caller's
+    /// executor via `Task.detached`. Same semantics as the synchronous
+    /// `read(rect:as:)`.
+    ///
+    /// - Parameters:
+    ///   - rect: Sub-rectangle to read. `nil` reads the whole band.
+    ///   - type: Element type for the returned array.
     public func read<T: GDALPixel>(
         rect: (x: Int, y: Int, width: Int, height: Int)? = nil,
         as type: T.Type = T.self
@@ -144,6 +171,12 @@ public final class RasterBand {
         }.value
     }
 
+    /// Async variant of the synchronous `write(_:rect:)` — same semantics,
+    /// hopped onto a detached task so the caller's executor stays free.
+    ///
+    /// - Parameters:
+    ///   - buffer: Pixels in row-major order.
+    ///   - rect: Destination rectangle.
     public func write<T: GDALPixel>(
         _ buffer: [T],
         rect: (x: Int, y: Int, width: Int, height: Int)
@@ -155,8 +188,14 @@ public final class RasterBand {
         }.value
     }
 
-    /// Streams the band block-by-block. Each yielded chunk is sized to GDAL's
-    /// native block size — typically the cheapest read pattern for tiled formats.
+    /// Streams the band block-by-block.
+    ///
+    /// Each yielded ``RasterBlock`` is sized to GDAL's native ``blockSize`` —
+    /// for tiled formats (COG, BigTIFF, GeoPackage rasters) this is usually
+    /// the cheapest read pattern. The work runs on a detached task; cancelling
+    /// the consuming Task aborts the stream.
+    ///
+    /// - Parameter type: Element type for each block. Must match ``dataType``.
     public func blocks<T: GDALPixel>(as type: T.Type = T.self) -> AsyncThrowingStream<RasterBlock<T>, Error> {
         let unsafe = UnsafeTransfer(self)
         return AsyncThrowingStream { continuation in
@@ -189,16 +228,25 @@ public final class RasterBand {
 
 }
 
+/// One chunk yielded by ``RasterBand/blocks(as:)``.
 public struct RasterBlock<T: GDALPixel>: Sendable {
+    /// Block position and size in the parent band, in pixel coordinates.
     public let rect: (x: Int, y: Int, width: Int, height: Int)
+    /// Pixel samples in row-major order.
     public let pixels: [T]
 }
 
 // MARK: - GDALPixel
 
-/// Conformed by Swift types that match a GDAL data type for raster IO.
+/// Conformed by Swift element types that have a matching GDAL ``DataType``.
+///
+/// Used by ``RasterBand``'s `read` / `write` overloads to choose the right
+/// C-side type at the IO boundary. Stock conformances cover
+/// `UInt8`/`Int8`/`UInt16`/`Int16`/`UInt32`/`Int32`/`UInt64`/`Int64`/`Float`/`Double`.
 public protocol GDALPixel: Sendable {
+    /// The matching GDAL data type for this Swift type.
     static var gdalType: DataType { get }
+    /// Zero value used to size read buffers.
     static var zero: Self { get }
 }
 

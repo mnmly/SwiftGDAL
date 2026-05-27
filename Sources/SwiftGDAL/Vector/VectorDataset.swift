@@ -17,6 +17,11 @@ public final class VectorDataset {
     }
 
     /// Opens an existing vector dataset.
+    ///
+    /// - Parameters:
+    ///   - path: Path / URL (file, `/vsicurl/…`, etc.).
+    ///   - access: ``AccessMode/readOnly`` (default) or ``AccessMode/update``.
+    /// - Throws: ``GDALError`` if the file can't be opened or has no vector layers.
     public init(opening path: String, access: AccessMode = .readOnly) throws {
         GDAL.registerAll()
         CPLErrorReset()
@@ -29,7 +34,14 @@ public final class VectorDataset {
         self.path = path
     }
 
-    /// Creates a new vector dataset using the named driver (e.g. "GPKG", "ESRI Shapefile", "GeoJSON").
+    /// Creates a new vector dataset using the named driver.
+    ///
+    /// - Parameters:
+    ///   - path: Output path. May be `/vsimem/…` for in-memory output.
+    ///   - driver: Vector driver short name, e.g. `"GPKG"`, `"ESRI Shapefile"`,
+    ///     `"GeoJSON"`. See ``GDAL/driverNames()`` for what's compiled in.
+    ///   - options: Driver-specific creation options as `KEY=VALUE` pairs.
+    /// - Throws: ``GDALError`` if the driver is unknown or creation fails.
     public init(creating path: String, driver: String, options: [String: String] = [:]) throws {
         GDAL.registerAll()
         CPLErrorReset()
@@ -51,19 +63,32 @@ public final class VectorDataset {
 
     public var layerCount: Int { Int(GDALDatasetGetLayerCount(handle)) }
 
+    /// Returns the layer at the given 0-based index.
+    /// - Parameter index: Layer index in `0..<layerCount`.
     public func layer(at index: Int) -> Layer {
         precondition(index >= 0 && index < layerCount, "layer index out of range")
         let h = GDALDatasetGetLayer(handle, Int32(index)).unsafelyUnwrapped
         return Layer(h, owner: self)
     }
 
+    /// Returns the layer with the given name, or `nil` if no match.
+    /// - Parameter name: Layer name (case-sensitive).
     public func layer(named name: String) -> Layer? {
         guard let h = GDALDatasetGetLayerByName(handle, name) else { return nil }
         return Layer(h, owner: self)
     }
 
-    /// Creates a new layer. The dataset must have been opened or created in
-    /// update mode and its driver must support layer creation.
+    /// Creates a new layer in this dataset.
+    ///
+    /// The dataset must have been opened or created in update mode and the
+    /// underlying driver must support layer creation.
+    ///
+    /// - Parameters:
+    ///   - name: New layer name.
+    ///   - geometryType: Geometry type all features will share.
+    ///   - spatialReference: CRS for the layer's geometries; `nil` means unknown.
+    ///   - options: Driver-specific creation options as `KEY=VALUE` pairs.
+    /// - Throws: ``GDALError`` on driver failure.
     public func createLayer(
         name: String,
         geometryType: GeometryType,
@@ -87,7 +112,15 @@ public final class VectorDataset {
 
     // MARK: - Transactions
 
-    /// Starts a driver-level transaction. Pair with `commit()` or `rollback()`.
+    /// Starts a driver-level transaction. Pair with ``commitTransaction()``
+    /// or ``rollbackTransaction()``.
+    ///
+    /// > Tip: Prefer the scope-based ``transaction(force:_:)`` helper —
+    /// > it handles rollback-on-throw and no-ops on drivers that don't
+    /// > support transactions.
+    ///
+    /// - Parameter force: Pass `true` to start even if the driver flags
+    ///   the transaction as unsafe.
     public func startTransaction(force: Bool = false) throws {
         CPLErrorReset()
         let err = GDALDatasetStartTransaction(handle, force ? 1 : 0)

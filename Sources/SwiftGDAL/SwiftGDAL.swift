@@ -45,6 +45,13 @@ public enum GDAL {
     }
 
     /// Sets a GDAL config option for the lifetime of the process.
+    ///
+    /// Wraps `CPLSetConfigOption`. See the [GDAL config options docs](https://gdal.org/user/configoptions.html)
+    /// for known keys.
+    ///
+    /// - Parameters:
+    ///   - key: Config option name, e.g. `"GDAL_CACHEMAX"`, `"CPL_TMPDIR"`.
+    ///   - value: New value, or `nil` to clear the override.
     public static func setConfigOption(_ key: String, _ value: String?) {
         registerAll()
         if let value {

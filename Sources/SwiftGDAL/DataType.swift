@@ -1,6 +1,9 @@
 import gdal
 
-/// Swift mirror of `GDALDataType` with byte-size helpers.
+/// Pixel sample type of a raster ``RasterBand``.
+///
+/// Swift mirror of GDAL's `GDALDataType`. Each case corresponds to a
+/// matching Swift type via ``GDALPixel`` for typed raster I/O.
 public enum DataType: Sendable, Equatable {
     case unknown
     case byte
@@ -18,6 +21,7 @@ public enum DataType: Sendable, Equatable {
     case cfloat32
     case cfloat64
 
+    /// Underlying GDAL `GDALDataType` constant.
     public var raw: GDALDataType {
         switch self {
         case .unknown: return GDT_Unknown
@@ -38,6 +42,9 @@ public enum DataType: Sendable, Equatable {
         }
     }
 
+    /// Lifts a raw GDAL data-type constant into the Swift enum.
+    ///
+    /// - Parameter raw: A `GDT_*` constant. Unknown values map to ``unknown``.
     public init(_ raw: GDALDataType) {
         switch raw {
         case GDT_Byte: self = .byte
@@ -64,13 +71,18 @@ public enum DataType: Sendable, Equatable {
     }
 }
 
+/// File-open access mode for ``Dataset``/``VectorDataset``.
 public enum AccessMode: Sendable {
+    /// Open without write permission. Default for most code paths.
     case readOnly
+    /// Open with write permission. Required for `setGeoTransform`,
+    /// layer creation, feature inserts, etc.
     case update
 
     var raw: GDALAccess { self == .readOnly ? GA_ReadOnly : GA_Update }
 }
 
+/// Direction flag for raster IO.
 public enum RWFlag: Sendable {
     case read
     case write
