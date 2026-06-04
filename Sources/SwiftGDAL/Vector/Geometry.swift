@@ -252,6 +252,28 @@ public final class Geometry {
         }
     }
 
+    // MARK: - Geometry operations
+
+    /// Returns a new geometry buffered by `distance`, or `nil` if OGR returns
+    /// no result.
+    ///
+    /// The buffer is computed in the geometry's own coordinate units (GEOS,
+    /// which backs this OGR operation, is planar) — so for a metric buffer
+    /// (e.g. 100 m), the geometry must already be in a projected, metre-based
+    /// CRS. Buffer first, then ``transform(_:)`` the result to your target CRS.
+    ///
+    /// - Parameters:
+    ///   - distance: Buffer distance in the geometry's coordinate units.
+    ///     Positive grows the geometry; negative shrinks it.
+    ///   - quadSegments: Number of segments used to approximate a quarter
+    ///     circle on rounded corners (OGR's default is 30; GEOS commonly uses
+    ///     8). Higher is smoother and heavier.
+    /// - Returns: The buffered geometry, or `nil` if OGR produced none.
+    public func buffer(_ distance: Double, quadSegments: Int = 30) -> Geometry? {
+        guard let h = OGR_G_Buffer(handle, distance, Int32(quadSegments)) else { return nil }
+        return Geometry(owned: h)
+    }
+
     // MARK: - Export
 
     public func toWKT() throws -> String {
