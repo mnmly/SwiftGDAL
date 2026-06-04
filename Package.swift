@@ -12,11 +12,6 @@ let package = Package(
             name: "SwiftGDAL",
             targets: ["SwiftGDAL"]
         ),
-        .library(
-            name: "SwiftGDAL Dynamic",
-            type: .dynamic,
-            targets: ["SwiftGDAL"]
-        ),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
