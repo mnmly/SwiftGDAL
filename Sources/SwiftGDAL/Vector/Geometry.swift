@@ -227,6 +227,51 @@ public final class Geometry {
         return (0..<n).map { point2(at: $0) }
     }
 
+    // MARK: - Sub-geometries
+
+    /// Number of immediate child geometries: the rings of a `.polygon`, the
+    /// member polygons of a `.multiPolygon`, the members of a
+    /// `.geometryCollection`, etc. `0` for leaf geometries (`.point`,
+    /// `.lineString`, `.linearRing`).
+    public var geometryCount: Int { Int(OGR_G_GetGeometryCount(handle)) }
+
+    /// The immediate child geometry at `index`, or `nil` if `index` is outside
+    /// `0..<geometryCount`.
+    ///
+    /// `OGR_G_GetGeometryRef` hands back a pointer *borrowed* from the parent,
+    /// so the child is cloned to preserve this type's "always owns its handle"
+    /// invariant — the returned `Geometry` is safe to mutate or outlive its
+    /// parent.
+    public func subGeometry(at index: Int) -> Geometry? {
+        guard index >= 0, index < geometryCount else { return nil }
+        return Geometry(cloning: OGR_G_GetGeometryRef(handle, Int32(index)))
+    }
+
+    /// Ring vertices of a polygonal geometry as `[[SIMD2<Double>]]`.
+    ///
+    /// For a `.polygon`, returns its outer ring followed by any hole rings. For
+    /// a `.multiPolygon`, returns every ring of every member polygon, flattened
+    /// in order. Returns an empty array for non-polygonal geometries (use
+    /// ``points2()`` for `.lineString` / `.point`). Rings with fewer than two
+    /// vertices are dropped.
+    ///
+    /// Vertices are in the geometry's own coordinate reference system; call
+    /// ``transform(_:)`` first if you need them in another CRS.
+    public func rings() -> [[SIMD2<Double>]] {
+        switch type {
+        case .polygon:
+            // Children are linear rings — read their vertices directly.
+            return (0..<geometryCount)
+                .compactMap { subGeometry(at: $0)?.points2() }
+                .filter { $0.count >= 2 }
+        case .multiPolygon:
+            // Children are polygons — recurse one level and concatenate.
+            return (0..<geometryCount).flatMap { subGeometry(at: $0)?.rings() ?? [] }
+        default:
+            return []
+        }
+    }
+
     // MARK: - SRS
 
     public var spatialReference: SpatialReference? {
