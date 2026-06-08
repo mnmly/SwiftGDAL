@@ -185,7 +185,7 @@ public final class Layer {
 /// Non-Sendable on purpose: GDAL layer iteration mutates the layer's
 /// internal cursor — keep iteration on one task.
 public struct FeatureSequence: Sequence, IteratorProtocol {
-    private let layer: Layer
+    let layer: Layer
 
     init(layer: Layer) { self.layer = layer }
 
@@ -203,7 +203,7 @@ public struct FeatureSequence: Sequence, IteratorProtocol {
 public struct AsyncFeatureSequence: AsyncSequence {
     public typealias Element = Feature
 
-    private let layer: Layer
+    let layer: Layer
     init(layer: Layer) { self.layer = layer }
 
     public struct AsyncIterator: AsyncIteratorProtocol {
