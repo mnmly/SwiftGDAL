@@ -37,6 +37,55 @@ struct VectorTests {
     }
 
     @Test
+    func subGeometryDescent() throws {
+        // A polygon's children are its rings; a leaf has none.
+        let poly = Geometry.polygon(
+            outer: [(0, 0), (1, 0), (1, 1), (0, 1)],
+            inner: [[(0.25, 0.25), (0.75, 0.25), (0.75, 0.75), (0.25, 0.75)]]
+        )
+        #expect(poly.geometryCount == 2)                 // outer + one hole
+        // OGR reports a polygon's ring as a line string on access; what matters
+        // is that its vertices are readable.
+        #expect((poly.subGeometry(at: 0)?.points2().count ?? 0) >= 4)
+        #expect(poly.subGeometry(at: 2) == nil)          // out of range
+        #expect(poly.subGeometry(at: -1) == nil)
+
+        let point = Geometry.point(x: 1, y: 2)
+        #expect(point.geometryCount == 0)
+        #expect(point.subGeometry(at: 0) == nil)
+    }
+
+    @Test
+    func ringsFromPolygon() throws {
+        // Auto-closed rings come back closed (first vertex repeated as last).
+        let poly = Geometry.polygon(
+            outer: [(0, 0), (1, 0), (1, 1), (0, 1)],
+            inner: [[(0.25, 0.25), (0.75, 0.25), (0.75, 0.75), (0.25, 0.75)]]
+        )
+        let rings = poly.rings()
+        #expect(rings.count == 2)
+        #expect(rings[0].first == SIMD2<Double>(0, 0))
+        #expect(rings[0].last == SIMD2<Double>(0, 0))    // closed
+        #expect(rings[1].count == 5)                       // 4 + closing vertex
+    }
+
+    @Test
+    func ringsFromMultiPolygon() throws {
+        let mp = Geometry.multiPolygon([
+            (outer: [(0, 0), (1, 0), (1, 1), (0, 1)], inner: []),
+            (outer: [(2, 2), (3, 2), (3, 3), (2, 3)], inner: []),
+        ])
+        #expect(mp.type == .multiPolygon)
+        let rings = mp.rings()
+        #expect(rings.count == 2)                           // one ring per member polygon
+        #expect(rings[1].first == SIMD2<Double>(2, 2))
+
+        // Non-polygonal geometry yields no rings.
+        let line = try Geometry(wkt: "LINESTRING (0 0, 1 1)")
+        #expect(line.rings().isEmpty)
+    }
+
+    @Test
     func createGeoJSONLayerWriteReadBack() throws {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftgdal-\(UUID().uuidString).geojson")
